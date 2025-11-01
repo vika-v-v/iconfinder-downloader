@@ -11,12 +11,13 @@ import random
 TARGET_URL = "https://www.iconfinder.com/search?q=phosphor"
 LINK_CSS = "a[data-action='icon-details'][href*='/icons/']"
 
-SCROLL_PAUSE_TIME = 1
-MAX_SCROLLS = 2
-HEADLESS_MODE = False
+SCROLL_PAUSE_TIME = 3
+MAX_SCROLLS = 10000
+HEADLESS_MODE = True
 
 ICON_DIR = "icons"
 ICON_TYPES = ["duotone", "light", "fill", "thin", "bold"]
+LINKS_FILE = "links.txt"   # cache file
 
 # --- Scraper ---
 def scrape_icon_links(url):
@@ -70,8 +71,6 @@ def scrape_icon_links(url):
 
 
 # --- Download logic ---
-# Regex: capture id, then capture the base name using non-greedy match,
-# and optionally capture one of the known types before "_icon"
 TYPE_ALT = "|".join(re.escape(t) for t in ICON_TYPES)
 ICON_RE = re.compile(rf"/icons/(\d+)/([a-z0-9_]+?)(?:_({TYPE_ALT}))?_icon$", re.IGNORECASE)
 
@@ -90,14 +89,12 @@ def download_icon(link):
     base_name = m.group(2).lower().rstrip("_")
     icon_type = m.group(3).lower() if m.group(3) else "normal"
 
-    # Folder: icons/<base_name> (do NOT include the type in folder name)
     folder_path = os.path.join(ICON_DIR, base_name)
     os.makedirs(folder_path, exist_ok=True)
 
     svg_path = os.path.join(folder_path, f"{icon_type}.svg")
     png_path = os.path.join(folder_path, f"{icon_type}.png")
 
-    # If both files already exist, skip
     if os.path.exists(svg_path) and os.path.exists(png_path):
         print(f"⏭️  Skipping existing: {base_name}/{icon_type}")
         return
@@ -106,7 +103,6 @@ def download_icon(link):
     svg_url = f"{base_download_url}/svg/4096"
     png_url = f"{base_download_url}/png/1024"
 
-    # small helper with retry
     def _fetch_to_file(url, path, tries=5):
         if os.path.exists(path):
             return True
@@ -118,9 +114,13 @@ def download_icon(link):
                         fh.write(resp.content)
                     return True
                 if resp.status_code == 429:
-                    print("⚠️ Rate limited, sleeping 60s...")
-                    time.sleep(60)
+                    wait_time = 60 + random.uniform(10, 30)
+                    print(f"⚠️ Rate limited, sleeping {wait_time:.0f}s...")
+                    time.sleep(wait_time)
                     continue
+                if resp.status_code == 403:
+                    print(f"❌ Premium icon, skipping...")
+                    break
                 else:
                     print(f"Attempt {attempt}: {url} returned {resp.status_code}")
             except Exception as e:
@@ -136,15 +136,24 @@ def download_icon(link):
     else:
         print(f"❌ Failed downloads for {base_name}/{icon_type}")
 
-    # be polite
-    time.sleep(0.15)
+    time.sleep(random.uniform(0.3, 1.2))
 
 
 # --- Main ---
 if __name__ == "__main__":
-    links = scrape_icon_links(TARGET_URL)
+    # 🧠 Check if links file exists
+    if os.path.exists(LINKS_FILE):
+        with open(LINKS_FILE, "r") as f:
+            links = [line.strip() for line in f if line.strip()]
+        print(f"Loaded {len(links)} links from {LINKS_FILE}")
+    else:
+        links = scrape_icon_links(TARGET_URL)
+        with open(LINKS_FILE, "w") as f:
+            for link in links:
+                f.write(link + "\n")
+        print(f"Saved {len(links)} links to {LINKS_FILE}")
 
-    print(f"\n--- Total links collected: {len(links)} ---\n")
+    print(f"\n--- Total links: {len(links)} ---\n")
 
     for link in links:
         download_icon(link)
