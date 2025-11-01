@@ -1,0 +1,12 @@
+{
+  "family": "fluent",
+  "target_url": "https://www.iconfinder.com/search?q=fluent&price=free&license=gte__1",
+  "link_css": "a[data-action='icon-details'][href*='/icons/']",
+  "scroll_pause_time": 3,
+  "max_scrolls": 1000,
+  "headless_mode": true,
+  "icon_dir": "icons/fluent",
+  "icon_types": [],
+  "links_file": "links_fluent.txt",
+  "prefix_to_remove": "ic_fluent_"
+}

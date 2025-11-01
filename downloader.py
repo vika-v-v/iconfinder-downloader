@@ -1,31 +1,35 @@
+# USAGE: python downloader.py phosphor
+# python downloader.py <configuration_name>
+
 import os
 import re
 import time
+import json
+import random
 import requests
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import random
 
-TARGET_URL = "https://www.iconfinder.com/search?q=phosphor"
-LINK_CSS = "a[data-action='icon-details'][href*='/icons/']"
+# --- Load configuration ---
+def load_config(family_name):
+    config_file = f"configuration_{family_name}.json"
+    if not os.path.exists(config_file):
+        raise FileNotFoundError(f"Configuration file not found: {config_file}")
+    with open(config_file, "r") as f:
+        config = json.load(f)
+    return config
 
-SCROLL_PAUSE_TIME = 3
-MAX_SCROLLS = 10000
-HEADLESS_MODE = True
-
-ICON_DIR = "icons"
-ICON_TYPES = ["duotone", "light", "fill", "thin", "bold"]
-LINKS_FILE = "links.txt"   # cache file
 
 # --- Scraper ---
-def scrape_icon_links(url):
+def scrape_icon_links(url, link_css, scroll_pause_time, max_scrolls, headless_mode):
     options = webdriver.ChromeOptions()
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    if HEADLESS_MODE:
+    if headless_mode:
         options.add_argument("--headless=new")
     driver = webdriver.Chrome(options=options)
 
@@ -33,24 +37,24 @@ def scrape_icon_links(url):
     print(f"Navigating to {url}...")
 
     WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, LINK_CSS))
+        EC.presence_of_element_located((By.CSS_SELECTOR, link_css))
     )
 
     all_links = set()
     last_height = driver.execute_script("return document.body.scrollHeight")
 
-    for scroll_count in range(1, MAX_SCROLLS + 1):
+    for scroll_count in range(1, max_scrolls + 1):
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(SCROLL_PAUSE_TIME)
+        time.sleep(scroll_pause_time)
 
         try:
             WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, LINK_CSS)) > len(all_links)
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, link_css)) > len(all_links)
             )
         except:
             pass
 
-        elements = driver.find_elements(By.CSS_SELECTOR, LINK_CSS)
+        elements = driver.find_elements(By.CSS_SELECTOR, link_css)
         for el in elements:
             href = el.get_attribute("href")
             if href:
@@ -71,25 +75,32 @@ def scrape_icon_links(url):
 
 
 # --- Download logic ---
-TYPE_ALT = "|".join(re.escape(t) for t in ICON_TYPES)
-ICON_RE = re.compile(rf"/icons/(\d+)/([a-z0-9_]+?)(?:_({TYPE_ALT}))?_icon$", re.IGNORECASE)
+def compile_icon_regex(icon_types):
+    type_alt = "|".join(re.escape(t) for t in icon_types)
+    return re.compile(rf"/icons/(\d+)/([a-z0-9_]+?)(?:_({type_alt}))?_icon$", re.IGNORECASE)
+
 
 session = requests.Session()
 session.headers.update({
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 })
 
-def download_icon(link):
-    m = ICON_RE.search(link)
+
+def download_icon(link, icon_dir, icon_re, remove_prefix):
+    m = icon_re.search(link)
     if not m:
         print(f"⚠️  Could not parse link: {link}")
         return
 
     icon_id = m.group(1)
     base_name = m.group(2).lower().rstrip("_")
+
+    if base_name.startswith(remove_prefix):
+        base_name = base_name.replace(remove_prefix, "", 1)
+
     icon_type = m.group(3).lower() if m.group(3) else "normal"
 
-    folder_path = os.path.join(ICON_DIR, base_name)
+    folder_path = os.path.join(icon_dir, base_name)
     os.makedirs(folder_path, exist_ok=True)
 
     svg_path = os.path.join(folder_path, f"{icon_type}.svg")
@@ -141,19 +152,39 @@ def download_icon(link):
 
 # --- Main ---
 if __name__ == "__main__":
-    # 🧠 Check if links file exists
-    if os.path.exists(LINKS_FILE):
-        with open(LINKS_FILE, "r") as f:
+    if len(sys.argv) < 2:
+        print("Usage: python downloader.py <family_name>")
+        sys.exit(1)
+
+    family = sys.argv[1]
+    config = load_config(family)
+
+    target_url = config["target_url"]
+    link_css = config["link_css"]
+    scroll_pause_time = config["scroll_pause_time"]
+    max_scrolls = config["max_scrolls"]
+    headless_mode = config["headless_mode"]
+    icon_dir = config["icon_dir"]
+    icon_types = config["icon_types"]
+    links_file = config["links_file"]
+    remove_prefix = config["prefix_to_remove"]
+
+    os.makedirs(icon_dir, exist_ok=True)
+
+    icon_re = compile_icon_regex(icon_types)
+
+    if os.path.exists(links_file):
+        with open(links_file, "r") as f:
             links = [line.strip() for line in f if line.strip()]
-        print(f"Loaded {len(links)} links from {LINKS_FILE}")
+        print(f"Loaded {len(links)} links from {links_file}")
     else:
-        links = scrape_icon_links(TARGET_URL)
-        with open(LINKS_FILE, "w") as f:
+        links = scrape_icon_links(target_url, link_css, scroll_pause_time, max_scrolls, headless_mode)
+        with open(links_file, "w") as f:
             for link in links:
                 f.write(link + "\n")
-        print(f"Saved {len(links)} links to {LINKS_FILE}")
+        print(f"Saved {len(links)} links to {links_file}")
 
     print(f"\n--- Total links: {len(links)} ---\n")
 
     for link in links:
-        download_icon(link)
+        download_icon(link, icon_dir, icon_re, remove_prefix)

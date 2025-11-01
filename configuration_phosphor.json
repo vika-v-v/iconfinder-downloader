@@ -1,0 +1,12 @@
+{
+  "family": "phosphor",
+  "target_url": "https://www.iconfinder.com/search?q=phosphor&price=free&license=gte__1",
+  "link_css": "a[data-action='icon-details'][href*='/icons/']",
+  "scroll_pause_time": 3,
+  "max_scrolls": 1000,
+  "headless_mode": true,
+  "icon_dir": "icons/phosphor",
+  "icon_types": ["duotone", "light", "fill", "thin", "bold"],
+  "links_file": "links_phosphor.txt",
+  "prefix_to_remove": ""
+}
