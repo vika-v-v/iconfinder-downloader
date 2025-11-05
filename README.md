@@ -32,6 +32,7 @@ Currently, the script works only for phosphor and fluent icons, which have defin
 - The script can be stopped anytime during the second phase and resumed without losing progress. Already downloaded icons are skipped. If stopped during the first phase, progress is lost unless the cache is saved.
 - Multiple icon families can be downloaded simultaneously.
 - Faulty images can be deleted and redownloaded.
+- If you see "Corrupted file detected"-error, that is okay, the file will be redownloaded automatically, it restarts the session and tries again, it might take several attempts.
 
 # Running the Project for Phosphor or Fluent
 
