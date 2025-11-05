@@ -139,6 +139,7 @@ def download_icon(link, icon_dir, icon_re, remove_prefix):
             time.sleep(random.uniform(2.0, 5.0))
         return False
 
+    time.sleep(random.uniform(2.0, 5.0))
     ok_svg = _fetch_to_file(svg_url, svg_path)
     ok_png = _fetch_to_file(png_url, png_path)
 

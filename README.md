@@ -41,9 +41,7 @@ In the root of the project, run the following commands:
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python downloader.py phosphor
-python cleanup.py
-python downloader.py phosphor
+python unified.py phosphor
 deactivate
 ```
 
@@ -55,12 +53,6 @@ This process will:
 - Run the scraper.
 - Clean up corrupted files (some files may appear corrupted without warning).
 - Reinstall corrupted files.
-
-You can repeat the following commands until no corrupted files remain:
-```bash
-python downloader.py <configuration name>
-python cleanup.py
-```
 
 # Running the Project for Another Icon Family
 
@@ -85,8 +77,7 @@ Fill the fields as follows:
 Run the downloader using the new configuration:
 
 ```bash
-python downloader.py <configuration name>
-python cleanup.py
+python unified.py <configuration name>
 ```
 
 Replace <configuration name> with the name of your configuration file (part after <i>configuration_</i>, like <i>jumpicon</i> in our case).
@@ -111,8 +102,7 @@ To download all icons from a specific URL without linking to a family:
 <li>Run the script as in the previous section:
 
 ```bash
-python downloader.py <configuration name>
-python cleanup.py
+python unified.py <configuration name>
 ```
 </li>
 </ol>
